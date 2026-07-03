@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mask & Temperature Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --border: #2d3a4d;
+      --text: #e8edf4;
+      --muted: #9aa8bc;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    header p, .meta {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .nav-link {
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel, .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .panel h2, .card-label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .video-wrap {
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      position: relative;
+    }
+
+    .video-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .video-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.75);
+      color: var(--muted);
+      font-size: 0.95rem;
+      pointer-events: none;
+    }
+
+    .video-overlay.hidden { display: none; }
+
+    .cards { display: grid; gap: 14px; }
+
+    .card-value {
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+
+    .signal-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .signal-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--yellow);
+      flex-shrink: 0;
+    }
+
+    .signal-dot.green { background: var(--green); }
+    .signal-dot.red { background: var(--red); }
+    .signal-dot.yellow { background: var(--yellow); }
+
+    .status-text { font-size: 1rem; line-height: 1.4; }
+
+    .person-list {
+      margin-top: 20px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .person-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 100px 100px 80px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      background: #121a24;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .person-row.primary {
+      border-color: #3b82f6;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge.green { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+    .badge.red { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+    .badge.yellow { background: rgba(234, 179, 8, 0.15); color: var(--yellow); }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .person-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Mask & Temperature Screening Dashboard</h1>
+      <p>Live multi-user tracking with WebSocket telemetry</p>
+    </div>
+    <a class="nav-link" href="/settings">Admin Settings</a>
+  </header>
+
+  <main class="layout">
+    <section>
+      <div class="panel">
+        <h2>Live Camera</h2>
+        <div class="video-wrap">
+          <img id="liveFeed" alt="Live camera feed">
+          <div id="videoOverlay" class="video-overlay">Starting camera...</div>
+        </div>
+      </div>
+
+      <div class="panel person-list">
+        <h2>Tracked Persons</h2>
+        <div id="personList"></div>
+      </div>
+    </section>
+
+    <section class="cards">
+      <div class="card signal-card">
+        <div id="signalDot" class="signal-dot yellow"></div>
+        <div>
+          <div class="card-label">Primary Signal</div>
+          <div id="statusText" class="status-text">Starting...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Mask Status</div>
+        <div id="maskValue" class="card-value">--</div>
+        <div id="maskMeta" class="meta">Confidence: --</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Temperature</div>
+        <div id="tempValue" class="card-value">--</div>
+        <div id="tempMeta" class="meta">Waiting for ESP32</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Tracked Count</div>
+        <div id="trackedCount" class="card-value">0</div>
+        <div id="thresholdMeta" class="meta">Fever threshold: --</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Serial Connection</div>
+        <div id="serialValue" class="card-value" style="font-size: 1rem;">--</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const liveFeed = document.getElementById("liveFeed");
+    const videoOverlay = document.getElementById("videoOverlay");
+    let liveFramesReceived = 0;
+
+    function hideVideoOverlay() {
+      videoOverlay.classList.add("hidden");
+    }
+
+    function showVideoOverlay(message) {
+      videoOverlay.textContent = message;
+      videoOverlay.classList.remove("hidden");
+    }
+
+    function refreshSnapshotFrame() {
+      fetch("/api/frame.jpg?ts=" + Date.now())
+        .then((response) => {
+          if (!response.ok) throw new Error("bad status");
+          return response.blob();
+        })
+        .then((blob) => {
+          if (blob.size < 1500) return;
+          const url = URL.createObjectURL(blob);
+          liveFeed.onload = () => URL.revokeObjectURL(url);
+          liveFeed.src = url;
+          liveFramesReceived += 1;
+          if (liveFramesReceived > 1) hideVideoOverlay();
+        })
+        .catch(() => {
+          showVideoOverlay("Camera feed unavailable — retrying...");
+        });
+    }
+
+    refreshSnapshotFrame();
+    setInterval(refreshSnapshotFrame, 250);
+
+    const socket = io();
+    const signalDot = document.getElementById("signalDot");
+    const statusText = document.getElementById("statusText");
+    const maskValue = document.getElementById("maskValue");
+    const maskMeta = document.getElementById("maskMeta");
+    const tempValue = document.getElementById("tempValue");
+    const tempMeta = document.getElementById("tempMeta");
+    const serialValue = document.getElementById("serialValue");
+    const trackedCount = document.getElementById("trackedCount");
+    const thresholdMeta = document.getElementById("thresholdMeta");
+    const personList = document.getElementById("personList");
+
+    function renderPersons(persons) {
+      if (!persons || persons.length === 0) {
+        personList.innerHTML = '<div class="meta">No faces tracked</div>';
+        return;
+      }
+
+      personList.innerHTML = persons.map((person) => `
+        <div class="person-row ${person.is_primary ? "primary" : ""}">
+          <strong>ID ${person.id}</strong>
+          <span>${person.mask_label} (${person.mask_confidence?.toFixed(1) ?? "--"}%)</span>
+          <span>${person.temperature_c != null ? person.temperature_c.toFixed(2) + " °C" : "--"}</span>
+          <span class="badge ${person.signal}">${person.signal}</span>
+          <span>${person.is_primary ? "Primary ROI" : ""}</span>
+        </div>
+      `).join("");
+    }
+
+    function updateDashboard(data) {
+      if (data.camera_ready) hideVideoOverlay();
+      signalDot.className = "signal-dot " + (data.signal || "yellow");
+      statusText.textContent = data.status_text || "No status";
+      maskValue.textContent = data.mask_label || "None";
+      maskMeta.textContent = data.mask_confidence != null
+        ? `Confidence: ${data.mask_confidence.toFixed(2)}%`
+        : "Confidence: --";
+      tempValue.textContent = data.temperature_c != null
+        ? `${data.temperature_c.toFixed(2)} °C`
+        : "--";
+      tempMeta.textContent = data.temp_text || "Waiting for ESP32";
+      serialValue.textContent = data.serial_status || "--";
+      trackedCount.textContent = data.tracked_count ?? 0;
+      thresholdMeta.textContent = data.fever_threshold_c != null
+        ? `Fever threshold: ${data.fever_threshold_c.toFixed(1)} °C`
+        : "Fever threshold: --";
+      renderPersons(data.persons || []);
+    }
+
+    socket.on("telemetry_update", updateDashboard);
+    socket.on("connect", async () => {
+      try {
+        const response = await fetch("/api/status");
+        updateDashboard(await response.json());
+      } catch (error) {
+        statusText.textContent = "Could not reach dashboard API";
+        signalDot.className = "signal-dot red";
+      }
+    });
+  </script>
+</body>
+</html>
