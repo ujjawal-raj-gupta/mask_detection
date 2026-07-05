@@ -5,13 +5,15 @@ import time
 import cv2
 import imutils
 import numpy as np
-from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from flask_socketio import SocketIO
 
 from centroid_tracker import CentroidTracker
 from config_manager import load_config, save_config, update_config
+from db import fetch_recent, fetch_today_stats, init_db
 from detect_mask_video import annotate_frame, load_detector_models
 from serial_reader import SerialTemperatureReader, list_serial_ports
+from snapshot import VIOLATIONS_DIR, VIOLATIONS_DIRNAME
 
 app = Flask(__name__)
 app.secret_key = "mask-detector-dashboard-secret"
@@ -224,6 +226,18 @@ def index():
 	return render_template("dashboard.html")
 
 
+@app.route("/logs")
+def logs():
+	entries = fetch_recent(50)
+	stats = fetch_today_stats()
+	return render_template("logs.html", entries=entries, stats=stats)
+
+
+@app.route(f"/{VIOLATIONS_DIRNAME}/<path:filename>")
+def violations(filename):
+	return send_from_directory(VIOLATIONS_DIR, filename)
+
+
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
 	config = load_config()
@@ -336,6 +350,7 @@ def parse_args():
 if __name__ == "__main__":
 	args = parse_args()
 	load_config()
+	init_db()
 	print("[INFO] preloading AI models...", flush=True)
 	faceNet, faceCascade, maskNet = load_detector_models()
 	print("[INFO] models loaded", flush=True)

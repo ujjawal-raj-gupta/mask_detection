@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screening Logs</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/galaxy.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/glass-theme.css') }}">
+</head>
+<body>
+  <div id="galaxy-bg" class="galaxy-container" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <header class="page-header">
+      <div>
+        <h1>Screening Logs</h1>
+        <p>Recent entries logged from the detection pipeline</p>
+      </div>
+      <nav class="nav-group">
+        <a class="nav-link" href="/">Dashboard</a>
+        <a class="nav-link active" href="/logs">Screening Logs</a>
+        <a class="nav-link" href="/settings">Settings</a>
+      </nav>
+    </header>
+
+    <section class="stats">
+      <div class="card">
+        <div class="card-label">Entries Today</div>
+        <div class="card-value">{{ stats.total }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Mask Compliance</div>
+        <div class="card-value">{{ stats.compliance_pct }}%</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Fever Flags Today</div>
+        <div class="card-value">{{ stats.fevers }}</div>
+      </div>
+    </section>
+
+    <div class="panel">
+      <h2>Recent Entries</h2>
+      {% if entries %}
+      <div class="glass-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Person</th>
+              <th>Mask</th>
+              <th>Temp (&deg;C)</th>
+              <th>Status</th>
+              <th>Snapshot</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in entries %}
+            <tr>
+              <td>{{ e.timestamp }}</td>
+              <td>{{ e.person_id if e.person_id is not none else "--" }}</td>
+              <td>
+                <span class="badge {{ 'mask' if e.mask_status == 'Mask' else 'nomask' }}">
+                  {{ e.mask_status }}
+                </span>
+              </td>
+              <td>{{ "%.1f"|format(e.temperature) if e.temperature is not none else "--" }}</td>
+              <td>
+                {% if e.temp_status %}
+                <span class="badge {{ e.temp_status|lower }}">{{ e.temp_status }}</span>
+                {% else %}
+                <span class="badge unknown">Unknown</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if e.snapshot_path %}
+                <a href="/{{ e.snapshot_path }}" target="_blank">
+                  <img src="/{{ e.snapshot_path }}" alt="violation snapshot">
+                </a>
+                {% else %}
+                <span class="empty">--</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty">No entries logged yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h2>Recent Violation Snapshots</h2>
+      {% set snaps = entries | selectattr("snapshot_path") | list %}
+      {% if snaps %}
+      <div class="gallery">
+        {% for e in snaps[:12] %}
+        <a href="/{{ e.snapshot_path }}" target="_blank">
+          <figure>
+            <img src="/{{ e.snapshot_path }}" alt="violation snapshot">
+            <figcaption>{{ e.timestamp }}<br>ID {{ e.person_id if e.person_id is not none else "--" }}</figcaption>
+          </figure>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">No violation snapshots captured yet.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script type="module" src="{{ url_for('static', filename='js/galaxy.js') }}"></script>
+</body>
+</html>

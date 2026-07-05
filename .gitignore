@@ -9,5 +9,11 @@ config.json
 .env
 *.env
 
+screening_log.db
+*.db-journal
+*.db-wal
+*.db-shm
+violations/
+
 .DS_Store
 Thumbs.db

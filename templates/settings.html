@@ -4,97 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Settings</title>
-  <style>
-    :root {
-      --bg: #0f1419;
-      --panel: #1a2332;
-      --border: #2d3a4d;
-      --text: #e8edf4;
-      --muted: #9aa8bc;
-      --accent: #3b82f6;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px;
-    }
-
-    .wrap {
-      max-width: 640px;
-      margin: 0 auto;
-    }
-
-    header {
-      margin-bottom: 24px;
-    }
-
-    header h1 {
-      font-size: 1.75rem;
-      margin-bottom: 8px;
-    }
-
-    header p, .message, .error {
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-
-    .error { color: #f87171; }
-    .message { color: #86efac; }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-    }
-
-    label {
-      display: block;
-      margin: 16px 0 6px;
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
-
-    input, select {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #121a24;
-      color: var(--text);
-    }
-
-    button, .link-btn {
-      margin-top: 20px;
-      padding: 10px 16px;
-      border: none;
-      border-radius: 8px;
-      background: var(--accent);
-      color: white;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-    }
-
-    .actions {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/galaxy.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/glass-theme.css') }}">
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Admin Settings</h1>
-      <p>Adjust fever threshold and ESP32 serial port. Changes are saved to config.json.</p>
-      <a class="link-btn" href="/">Back to Dashboard</a>
+  <div id="galaxy-bg" class="galaxy-container" aria-hidden="true"></div>
+
+  <div class="app-shell narrow">
+    <header class="page-header">
+      <div>
+        <h1>Admin Settings</h1>
+        <p>Adjust fever threshold and ESP32 serial port. Changes are saved to config.json.</p>
+      </div>
+      <nav class="nav-group">
+        <a class="nav-link" href="/">Dashboard</a>
+        <a class="nav-link" href="/logs">Screening Logs</a>
+        <a class="nav-link active" href="/settings">Settings</a>
+      </nav>
     </header>
 
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
@@ -108,7 +34,7 @@
         <button type="submit">Unlock Settings</button>
       </div>
       {% else %}
-      <label for="fever_threshold_c">Fever Threshold (°C)</label>
+      <label for="fever_threshold_c">Fever Threshold (&deg;C)</label>
       <input id="fever_threshold_c" name="fever_threshold_c" type="number"
         step="0.1" min="35" max="42"
         value="{{ config.fever_threshold_c }}">
@@ -134,10 +60,12 @@
 
       <div class="actions">
         <button type="submit">Save Settings</button>
-        <a class="link-btn" href="/settings/logout">Logout</a>
+        <a class="btn-primary" href="/settings/logout">Logout</a>
       </div>
       {% endif %}
     </form>
   </div>
+
+  <script type="module" src="{{ url_for('static', filename='js/galaxy.js') }}"></script>
 </body>
 </html>

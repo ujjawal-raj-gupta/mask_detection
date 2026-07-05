@@ -14,6 +14,8 @@ import cv2
 from centroid_tracker import CentroidTracker
 from config_manager import load_config
 from serial_reader import SerialTemperatureReader, find_temperature_port
+from db import init_db, log_entry, should_log
+from snapshot import save_violation_snapshot
 
 FACE_CONFIDENCE = 0.2
 
@@ -163,6 +165,7 @@ def annotate_frame(frame, faceNet, maskNet, faceCascade, serialReader,
 	for box, pred in zip(validLocs, preds):
 		predByBox[box] = pred
 
+	cleanFrame = frame.copy()
 	primaryID = choose_primary_person(tracked, frame.shape)
 	persons = []
 	overallSignal = "yellow"
@@ -207,6 +210,16 @@ def annotate_frame(frame, faceNet, maskNet, faceCascade, serialReader,
 			"is_primary": isPrimary,
 			"box": [int(startX), int(startY), int(endX), int(endY)],
 		})
+
+		if should_log(int(objectID)):
+			personTempStatus = None
+			if personTempC is not None:
+				personTempStatus = "Fever" if personTempC >= feverThresholdC else "Normal"
+			snapshotPath = save_violation_snapshot(
+				cleanFrame, (startX, startY, endX, endY), maskLabel,
+				personTempStatus, int(objectID))
+			log_entry(maskLabel, personTempC, int(objectID),
+				snapshotPath, feverThresholdC)
 
 		if isPrimary:
 			overallSignal = personSignal
@@ -265,6 +278,8 @@ def main():
 	tempPort = args["temp_port"] or config.get("temp_port")
 	tempBaud = args["temp_baud"] or config.get("temp_baud", 115200)
 	feverThresholdC = config.get("fever_threshold_c", 37.5)
+
+	init_db()
 
 	serialReader = SerialTemperatureReader(tempPort, tempBaud)
 	serialReader.start()

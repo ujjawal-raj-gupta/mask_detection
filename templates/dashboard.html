@@ -4,235 +4,78 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mask & Temperature Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/galaxy.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/glass-theme.css') }}">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
-  <style>
-    :root {
-      --bg: #0f1419;
-      --panel: #1a2332;
-      --border: #2d3a4d;
-      --text: #e8edf4;
-      --muted: #9aa8bc;
-      --green: #22c55e;
-      --red: #ef4444;
-      --yellow: #eab308;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    header h1 {
-      font-size: 1.75rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    header p, .meta {
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .nav-link {
-      color: var(--text);
-      text-decoration: none;
-      border: 1px solid var(--border);
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 20px;
-      align-items: start;
-    }
-
-    .panel, .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-    }
-
-    .panel h2, .card-label {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-
-    .video-wrap {
-      background: #000;
-      border-radius: 8px;
-      overflow: hidden;
-      aspect-ratio: 16 / 9;
-      position: relative;
-    }
-
-    .video-wrap img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
-    }
-
-    .video-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.75);
-      color: var(--muted);
-      font-size: 0.95rem;
-      pointer-events: none;
-    }
-
-    .video-overlay.hidden { display: none; }
-
-    .cards { display: grid; gap: 14px; }
-
-    .card-value {
-      font-size: 1.35rem;
-      font-weight: 600;
-    }
-
-    .signal-card {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .signal-dot {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--yellow);
-      flex-shrink: 0;
-    }
-
-    .signal-dot.green { background: var(--green); }
-    .signal-dot.red { background: var(--red); }
-    .signal-dot.yellow { background: var(--yellow); }
-
-    .status-text { font-size: 1rem; line-height: 1.4; }
-
-    .person-list {
-      margin-top: 20px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .person-row {
-      display: grid;
-      grid-template-columns: 60px 1fr 100px 100px 80px;
-      gap: 12px;
-      align-items: center;
-      padding: 12px;
-      background: #121a24;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.9rem;
-    }
-
-    .person-row.primary {
-      border-color: #3b82f6;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .badge.green { background: rgba(34, 197, 94, 0.15); color: var(--green); }
-    .badge.red { background: rgba(239, 68, 68, 0.15); color: var(--red); }
-    .badge.yellow { background: rgba(234, 179, 8, 0.15); color: var(--yellow); }
-
-    @media (max-width: 900px) {
-      .layout { grid-template-columns: 1fr; }
-      .person-row { grid-template-columns: 1fr; }
-    }
-  </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>Mask & Temperature Screening Dashboard</h1>
-      <p>Live multi-user tracking with WebSocket telemetry</p>
-    </div>
-    <a class="nav-link" href="/settings">Admin Settings</a>
-  </header>
+  <div id="galaxy-bg" class="galaxy-container" aria-hidden="true"></div>
 
-  <main class="layout">
-    <section>
-      <div class="panel">
-        <h2>Live Camera</h2>
-        <div class="video-wrap">
-          <img id="liveFeed" alt="Live camera feed">
-          <div id="videoOverlay" class="video-overlay">Starting camera...</div>
+  <div class="app-shell">
+    <header class="page-header">
+      <div>
+        <h1>Mask & Temperature Screening</h1>
+        <p>Live multi-user tracking with WebSocket telemetry</p>
+      </div>
+      <nav class="nav-group">
+        <a class="nav-link active" href="/">Dashboard</a>
+        <a class="nav-link" href="/logs">Screening Logs</a>
+        <a class="nav-link" href="/settings">Settings</a>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section>
+        <div class="panel">
+          <h2>Live Camera</h2>
+          <div class="video-wrap">
+            <img id="liveFeed" alt="Live camera feed">
+            <div id="videoOverlay" class="video-overlay">Starting camera...</div>
+          </div>
         </div>
-      </div>
 
-      <div class="panel person-list">
-        <h2>Tracked Persons</h2>
-        <div id="personList"></div>
-      </div>
-    </section>
-
-    <section class="cards">
-      <div class="card signal-card">
-        <div id="signalDot" class="signal-dot yellow"></div>
-        <div>
-          <div class="card-label">Primary Signal</div>
-          <div id="statusText" class="status-text">Starting...</div>
+        <div class="panel person-list">
+          <h2>Tracked Persons</h2>
+          <div id="personList"></div>
         </div>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-label">Mask Status</div>
-        <div id="maskValue" class="card-value">--</div>
-        <div id="maskMeta" class="meta">Confidence: --</div>
-      </div>
+      <section class="cards">
+        <div class="card signal-card">
+          <div id="signalDot" class="signal-dot yellow"></div>
+          <div>
+            <div class="card-label">Primary Signal</div>
+            <div id="statusText" class="status-text">Starting...</div>
+          </div>
+        </div>
 
-      <div class="card">
-        <div class="card-label">Temperature</div>
-        <div id="tempValue" class="card-value">--</div>
-        <div id="tempMeta" class="meta">Waiting for ESP32</div>
-      </div>
+        <div class="card">
+          <div class="card-label">Mask Status</div>
+          <div id="maskValue" class="card-value">--</div>
+          <div id="maskMeta" class="meta">Confidence: --</div>
+        </div>
 
-      <div class="card">
-        <div class="card-label">Tracked Count</div>
-        <div id="trackedCount" class="card-value">0</div>
-        <div id="thresholdMeta" class="meta">Fever threshold: --</div>
-      </div>
+        <div class="card">
+          <div class="card-label">Temperature</div>
+          <div id="tempValue" class="card-value">--</div>
+          <div id="tempMeta" class="meta">Waiting for ESP32</div>
+        </div>
 
-      <div class="card">
-        <div class="card-label">Serial Connection</div>
-        <div id="serialValue" class="card-value" style="font-size: 1rem;">--</div>
-      </div>
-    </section>
-  </main>
+        <div class="card">
+          <div class="card-label">Tracked Count</div>
+          <div id="trackedCount" class="card-value">0</div>
+          <div id="thresholdMeta" class="meta">Fever threshold: --</div>
+        </div>
 
+        <div class="card">
+          <div class="card-label">Serial Connection</div>
+          <div id="serialValue" class="card-value" style="font-size: 1rem;">--</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="{{ url_for('static', filename='js/galaxy.js') }}"></script>
   <script>
     const liveFeed = document.getElementById("liveFeed");
     const videoOverlay = document.getElementById("videoOverlay");
