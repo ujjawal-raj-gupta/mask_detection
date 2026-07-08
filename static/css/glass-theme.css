@@ -167,16 +167,19 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.video-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
+    .video-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      position: relative;
+      z-index: 1;
+    }
 
-.video-overlay {
-  position: absolute;
-  inset: 0;
+    .video-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -434,6 +437,34 @@ button, .btn-primary {
 button:hover, .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 28px var(--accent-glow);
+}
+
+.btn-danger {
+  margin-top: 0;
+  background: linear-gradient(135deg, #dc2626 0%, #f87171 100%);
+  box-shadow: 0 4px 20px rgba(248, 113, 113, 0.25);
+}
+
+.btn-danger:hover {
+  box-shadow: 0 6px 28px rgba(248, 113, 113, 0.35);
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+}
+
+.log-actions {
+  margin-bottom: 22px;
+}
+
+.inline-link {
+  color: #c7d2fe;
+  text-decoration: none;
+}
+
+.inline-link:hover {
+  text-decoration: underline;
 }
 
 .actions {

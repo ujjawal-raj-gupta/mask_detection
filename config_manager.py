@@ -8,7 +8,11 @@ DEFAULT_CONFIG = {
 	"fever_threshold_c": 37.5,
 	"temp_port": "COM4",
 	"temp_baud": 115200,
-	"admin_password": "admin123",
+	"serial_enabled": False,
+	"serial_mode": "monitor",
+	"debug": False,
+	"mask_confidence_threshold": 70.0,
+	"log_cooldown_seconds": 8,
 }
 
 _config_lock = threading.Lock()

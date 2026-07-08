@@ -37,8 +37,7 @@ staff, and keeps no reliable audit trail. This project automates that workflow:
   saved to `violations/` with the timestamp, reason, and person ID in the
   filename.
 - **Web dashboard** (Flask + Socket.IO) with a live feed, per-person telemetry,
-  an admin settings page, and a screening logs page with stats and a snapshot
-  gallery.
+  a screening logs page with stats and a snapshot gallery.
 
 ## Architecture
 
@@ -69,8 +68,8 @@ For the primary person (closest to the sensor ROI):
 - **Yellow / waiting** — mask detected but temperature not yet available.
 - **Red** — no mask, or temperature at/above the fever threshold.
 
-The fever threshold defaults to `37.5 C` and is configurable from the admin
-settings page. The `temp_status` field (`Normal` / `Fever`) together with the
+The fever threshold defaults to `37.5 C` and can be changed in `config.json`.
+The `temp_status` field (`Normal` / `Fever`) together with the
 mask status forms a **combined risk flag**: a violation is any `No Mask` **or**
 `Fever` result.
 
@@ -115,7 +114,7 @@ Face-Mask-Detection/
 ├── snapshot.py            # Violation snapshot cropping/saving
 ├── mask_detector.h5       # Trained MobileNetV2 mask classifier
 ├── face_detector/         # SSD face detector prototxt + weights
-├── templates/             # dashboard.html, settings.html, logs.html
+├── templates/             # dashboard.html, logs.html
 ├── esp32_mlx90614_temperature/  # Arduino sketch for the ESP32
 ├── requirements.txt
 ├── TEMPERATURE_SETUP.md   # Wiring + Arduino setup guide
@@ -148,7 +147,6 @@ Then open:
 
 - `http://127.0.0.1:5000` — live dashboard
 - `http://127.0.0.1:5000/logs` — screening logs, stats, and violation gallery
-- `http://127.0.0.1:5000/settings` — admin settings (fever threshold, serial port)
 
 ### Standalone OpenCV window
 
@@ -162,12 +160,10 @@ the `violations/` folder on first run.
 
 ## Configuration
 
-Runtime settings live in `config.json` (git-ignored) and are editable from the
-admin settings page:
+Runtime settings live in `config.json` (git-ignored):
 
 - `fever_threshold_c` — fever cutoff in Celsius (default `37.5`)
 - `temp_port` / `temp_baud` — ESP32 serial port and baud rate
-- `admin_password` — password protecting the settings page
 
 ## Notes
 

@@ -10,6 +10,9 @@ class CentroidTracker:
 		self.maxDisappeared = maxDisappeared
 		self.maxDistance = maxDistance
 
+	def set_frame_width(self, width):
+		self.maxDistance = max(80, int(width * 0.18))
+
 	def register(self, centroid):
 		self.objects[self.nextObjectID] = centroid
 		self.disappeared[self.nextObjectID] = 0

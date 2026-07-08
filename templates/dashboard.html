@@ -3,130 +3,280 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mask & Temperature Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/galaxy.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/glass-theme.css') }}">
+  <title>Screening Analytics · Mask & Temperature</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/analytics-dashboard.css') }}">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
-  <div id="galaxy-bg" class="galaxy-container" aria-hidden="true"></div>
+  <div class="analytics-app">
+    <aside class="sidebar">
+      <div class="sidebar-logo">MD</div>
+      <a class="sidebar-btn active" href="/" title="Monitoring">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      </a>
+      <a class="sidebar-btn" href="/logs" title="Screening Logs">
+        <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/></svg>
+      </a>
+      <a class="sidebar-btn" href="/logs/export.csv" title="Export CSV">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <div class="sidebar-spacer"></div>
+      <span class="sidebar-btn" title="Live system" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke-linecap="round"/></svg>
+      </span>
+    </aside>
 
-  <div class="app-shell">
-    <header class="page-header">
-      <div>
-        <h1>Mask & Temperature Screening</h1>
-        <p>Live multi-user tracking with WebSocket telemetry</p>
+    <div class="main-area">
+      <header class="topbar">
+        <nav class="pill-nav">
+          <a class="active" href="/">Monitoring</a>
+          <a href="/logs">Screening Logs</a>
+        </nav>
+        <div class="profile-block">
+          <div id="connectionPill" class="live-pill offline">
+            <span class="dot"></span>
+            <span id="connectionText">Connecting</span>
+          </div>
+          <div class="profile-info">
+            <div class="profile-name">Screening System</div>
+            <div class="profile-handle">@mask_detection</div>
+          </div>
+          <div class="avatar-wrap">
+            <div class="avatar">🛡️</div>
+            <span class="avatar-badge" id="alertBadge" hidden></span>
+          </div>
+        </div>
+      </header>
+
+      <div class="filter-bar">
+        <span class="filter-chip">Signal: <strong id="filterSignal">--</strong></span>
+        <span class="filter-chip">Threshold: <strong id="filterThreshold">--</strong></span>
+        <span class="filter-chip">Serial: <strong id="filterSerial">--</strong></span>
+        <span class="filter-chip">FPS: <strong id="filterFps">--</strong></span>
       </div>
-      <nav class="nav-group">
-        <a class="nav-link active" href="/">Dashboard</a>
-        <a class="nav-link" href="/logs">Screening Logs</a>
-        <a class="nav-link" href="/settings">Settings</a>
-      </nav>
-    </header>
 
-    <main class="layout">
-      <section>
-        <div class="panel">
-          <h2>Live Camera</h2>
-          <div class="video-wrap">
-            <img id="liveFeed" alt="Live camera feed">
+      <main class="analytics-grid">
+        <div id="maskCard" class="metric-card">
+          <div class="metric-label">Mask Status</div>
+          <div id="maskValue" class="metric-value">--</div>
+          <div id="maskMeta" class="metric-meta">Confidence: --</div>
+          <div class="confidence-bar"><div id="confidenceFill" class="confidence-fill"></div></div>
+        </div>
+
+        <div id="tempCard" class="metric-card">
+          <div class="metric-label">Temperature</div>
+          <div id="tempValue" class="metric-value">--</div>
+          <div id="tempMeta" class="metric-meta">Waiting for sensor</div>
+          <div id="tempTrend" class="metric-trend neutral">No reading</div>
+        </div>
+
+        <div id="countCard" class="metric-card">
+          <div class="metric-label">Tracked</div>
+          <div id="trackedCount" class="metric-value">0</div>
+          <div id="thresholdMeta" class="metric-meta">Fever threshold: --</div>
+          <div class="metric-trend up">● Live count</div>
+        </div>
+
+        <div id="signalCard" class="metric-card signal-card signal-yellow">
+          <div class="metric-label">Primary Signal</div>
+          <div class="signal-indicator">
+            <div id="signalDot" class="signal-dot yellow"></div>
+            <div id="statusText" class="metric-value">Starting...</div>
+          </div>
+        </div>
+
+        <section class="panel camera-panel">
+          <div class="panel-header">
+            <span class="panel-title">Live Camera</span>
+            <span id="trackedBadge" class="panel-badge">0 tracked</span>
+          </div>
+          <div id="videoWrap" class="video-wrap">
+            <img id="liveFeed" src="{{ url_for('video_feed') }}" alt="Live camera feed">
             <div id="videoOverlay" class="video-overlay">Starting camera...</div>
           </div>
-        </div>
+        </section>
 
-        <div class="panel person-list">
-          <h2>Tracked Persons</h2>
-          <div id="personList"></div>
-        </div>
-      </section>
-
-      <section class="cards">
-        <div class="card signal-card">
-          <div id="signalDot" class="signal-dot yellow"></div>
-          <div>
-            <div class="card-label">Primary Signal</div>
-            <div id="statusText" class="status-text">Starting...</div>
+        <section class="panel timeline-panel">
+          <div class="panel-header">
+            <span class="panel-title">Detection Timeline</span>
           </div>
-        </div>
+          <div id="timelineList" class="timeline-list">
+            <div class="empty-state">
+              <div class="icon">◎</div>
+              <div>No active detections</div>
+            </div>
+          </div>
+        </section>
 
-        <div class="card">
-          <div class="card-label">Mask Status</div>
-          <div id="maskValue" class="card-value">--</div>
-          <div id="maskMeta" class="meta">Confidence: --</div>
-        </div>
+        <section class="panel pill-panel">
+          <div class="panel-header">
+            <span class="panel-title">Signal Distribution</span>
+          </div>
+          <div id="pillChart" class="pill-chart"></div>
+        </section>
 
-        <div class="card">
-          <div class="card-label">Temperature</div>
-          <div id="tempValue" class="card-value">--</div>
-          <div id="tempMeta" class="meta">Waiting for ESP32</div>
-        </div>
+        <section class="panel persons-panel">
+          <div class="panel-header">
+            <span class="panel-title">Tracked Persons</span>
+            <span id="serialValue" class="panel-badge" style="background:var(--orange-dim);color:var(--orange);border-color:rgba(255,107,53,.3)">Serial: --</span>
+          </div>
+          <div id="personList" class="person-list">
+            <div class="empty-state">
+              <div class="icon">👤</div>
+              <div>No faces in frame</div>
+            </div>
+          </div>
+        </section>
 
-        <div class="card">
-          <div class="card-label">Tracked Count</div>
-          <div id="trackedCount" class="card-value">0</div>
-          <div id="thresholdMeta" class="meta">Fever threshold: --</div>
-        </div>
-
-        <div class="card">
-          <div class="card-label">Serial Connection</div>
-          <div id="serialValue" class="card-value" style="font-size: 1rem;">--</div>
-        </div>
-      </section>
-    </main>
+        <section class="panel serial-panel">
+          <div class="panel-header">
+            <span class="panel-title">Arduino Serial Monitor Input</span>
+          </div>
+          <p class="serial-help">Open COM4 in Arduino Serial Monitor. Copy a temperature line and paste it here. COM4 stays free for Arduino IDE.</p>
+          <textarea id="serialInput" class="serial-input" rows="3" placeholder="e.g. TEMP_C:36.50,AMBIENT_C:28.30&#10;or Temperature: 36.5"></textarea>
+          <div class="serial-actions">
+            <button type="button" id="serialSubmit" class="serial-btn">Apply Reading</button>
+            <span id="serialInputStatus" class="serial-input-status"></span>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
 
-  <script type="module" src="{{ url_for('static', filename='js/galaxy.js') }}"></script>
   <script>
     const liveFeed = document.getElementById("liveFeed");
     const videoOverlay = document.getElementById("videoOverlay");
-    let liveFramesReceived = 0;
+    const videoWrap = document.getElementById("videoWrap");
+    const connectionPill = document.getElementById("connectionPill");
+    const connectionText = document.getElementById("connectionText");
+    const alertBadge = document.getElementById("alertBadge");
+    const signalCard = document.getElementById("signalCard");
+    const signalDot = document.getElementById("signalDot");
+    const statusText = document.getElementById("statusText");
+    const maskCard = document.getElementById("maskCard");
+    const maskValue = document.getElementById("maskValue");
+    const maskMeta = document.getElementById("maskMeta");
+    const confidenceFill = document.getElementById("confidenceFill");
+    const tempCard = document.getElementById("tempCard");
+    const tempValue = document.getElementById("tempValue");
+    const tempMeta = document.getElementById("tempMeta");
+    const tempTrend = document.getElementById("tempTrend");
+    const serialValue = document.getElementById("serialValue");
+    const countCard = document.getElementById("countCard");
+    const trackedCount = document.getElementById("trackedCount");
+    const trackedBadge = document.getElementById("trackedBadge");
+    const thresholdMeta = document.getElementById("thresholdMeta");
+    const personList = document.getElementById("personList");
+    const timelineList = document.getElementById("timelineList");
+    const pillChart = document.getElementById("pillChart");
+    const filterSignal = document.getElementById("filterSignal");
+    const filterThreshold = document.getElementById("filterThreshold");
+    const filterSerial = document.getElementById("filterSerial");
+    const filterFps = document.getElementById("filterFps");
+    const serialInput = document.getElementById("serialInput");
+    const serialSubmit = document.getElementById("serialSubmit");
+    const serialInputStatus = document.getElementById("serialInputStatus");
+
+    let lastValues = {};
+    const signalHistory = [];
 
     function hideVideoOverlay() {
       videoOverlay.classList.add("hidden");
+      videoWrap.classList.add("live");
     }
 
     function showVideoOverlay(message) {
       videoOverlay.textContent = message;
       videoOverlay.classList.remove("hidden");
+      videoWrap.classList.remove("live");
     }
 
-    function refreshSnapshotFrame() {
-      fetch("/api/frame.jpg?ts=" + Date.now())
-        .then((response) => {
-          if (!response.ok) throw new Error("bad status");
-          return response.blob();
-        })
-        .then((blob) => {
-          if (blob.size < 1500) return;
-          const url = URL.createObjectURL(blob);
-          liveFeed.onload = () => URL.revokeObjectURL(url);
-          liveFeed.src = url;
-          liveFramesReceived += 1;
-          if (liveFramesReceived > 1) hideVideoOverlay();
-        })
-        .catch(() => {
-          showVideoOverlay("Camera feed unavailable — retrying...");
-        });
+    liveFeed.addEventListener("load", hideVideoOverlay);
+    liveFeed.addEventListener("error", () => {
+      showVideoOverlay("Camera feed unavailable — retrying...");
+      setTimeout(() => {
+        liveFeed.src = "{{ url_for('video_feed') }}?ts=" + Date.now();
+      }, 1000);
+    });
+    setTimeout(hideVideoOverlay, 3000);
+
+    function flash(el) {
+      if (!el) return;
+      el.classList.remove("updated");
+      void el.offsetWidth;
+      el.classList.add("updated");
     }
 
-    refreshSnapshotFrame();
-    setInterval(refreshSnapshotFrame, 250);
+    function setText(el, value, cardEl) {
+      if (lastValues[el.id] !== value) {
+        el.textContent = value;
+        el.classList.add("animated");
+        setTimeout(() => el.classList.remove("animated"), 350);
+        flash(cardEl);
+        lastValues[el.id] = value;
+      }
+    }
 
-    const socket = io();
-    const signalDot = document.getElementById("signalDot");
-    const statusText = document.getElementById("statusText");
-    const maskValue = document.getElementById("maskValue");
-    const maskMeta = document.getElementById("maskMeta");
-    const tempValue = document.getElementById("tempValue");
-    const tempMeta = document.getElementById("tempMeta");
-    const serialValue = document.getElementById("serialValue");
-    const trackedCount = document.getElementById("trackedCount");
-    const thresholdMeta = document.getElementById("thresholdMeta");
-    const personList = document.getElementById("personList");
+    function setConnection(online, label) {
+      connectionPill.classList.toggle("offline", !online);
+      connectionText.textContent = label;
+    }
+
+    function renderTimeline(persons) {
+      if (!persons || persons.length === 0) {
+        timelineList.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">◎</div>
+            <div>No active detections</div>
+          </div>`;
+        return;
+      }
+
+      timelineList.innerHTML = persons.map((person) => `
+        <div class="timeline-row">
+          <span class="timeline-id">ID ${person.id}</span>
+          <div class="timeline-bar-wrap">
+            <div class="timeline-bar ${person.signal} ${person.is_primary ? "primary" : ""}">
+              ${person.mask_label} ${person.mask_confidence?.toFixed(0) ?? "--"}%
+            </div>
+          </div>
+          <span class="timeline-temp">${person.temperature_c != null ? person.temperature_c.toFixed(1) + "°C" : "--"}</span>
+        </div>
+      `).join("");
+    }
+
+    function renderPillChart(persons) {
+      const counts = { green: 0, red: 0, yellow: 0 };
+      (persons || []).forEach((p) => {
+        if (counts[p.signal] !== undefined) counts[p.signal]++;
+      });
+
+      if (persons && persons.length) {
+        signalHistory.push(counts.red > 0 ? "orange" : counts.green > 0 ? "lime" : "white");
+        if (signalHistory.length > 8) signalHistory.shift();
+      }
+
+      const slots = signalHistory.length ? signalHistory : ["white", "white", "white", "white"];
+      while (slots.length < 8) slots.unshift("white");
+
+      const maxH = 140;
+      pillChart.innerHTML = slots.map((color, i) => {
+        const h = color === "orange" ? maxH : color === "lime" ? maxH * 0.75 : maxH * 0.35;
+        return `
+          <div class="pill-col">
+            <div class="pill-bar ${color}" style="height:${h}px">${i + 1}</div>
+            <span class="pill-label">T${i + 1}</span>
+          </div>`;
+      }).join("");
+    }
 
     function renderPersons(persons) {
       if (!persons || persons.length === 0) {
-        personList.innerHTML = '<div class="meta">No faces tracked</div>';
+        personList.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">👤</div>
+            <div>No faces in frame</div>
+          </div>`;
         return;
       }
 
@@ -136,39 +286,116 @@
           <span>${person.mask_label} (${person.mask_confidence?.toFixed(1) ?? "--"}%)</span>
           <span>${person.temperature_c != null ? person.temperature_c.toFixed(2) + " °C" : "--"}</span>
           <span class="badge ${person.signal}">${person.signal}</span>
-          <span>${person.is_primary ? "Primary ROI" : ""}</span>
+          <span>${person.is_primary ? "★ Primary" : ""}</span>
         </div>
       `).join("");
     }
 
     function updateDashboard(data) {
       if (data.camera_ready) hideVideoOverlay();
-      signalDot.className = "signal-dot " + (data.signal || "yellow");
-      statusText.textContent = data.status_text || "No status";
-      maskValue.textContent = data.mask_label || "None";
-      maskMeta.textContent = data.mask_confidence != null
-        ? `Confidence: ${data.mask_confidence.toFixed(2)}%`
+
+      const signal = data.signal || "yellow";
+      signalDot.className = "signal-dot " + signal;
+      signalCard.className = "metric-card signal-card signal-" + signal;
+
+      const hasAlert = signal === "red";
+      alertBadge.hidden = !hasAlert;
+
+      setText(statusText, data.status_text || "No status", signalCard);
+      setText(maskValue, data.mask_label || "None", maskCard);
+
+      const confText = data.mask_confidence != null
+        ? `Confidence: ${data.mask_confidence.toFixed(1)}%`
         : "Confidence: --";
-      tempValue.textContent = data.temperature_c != null
-        ? `${data.temperature_c.toFixed(2)} °C`
+      setText(maskMeta, confText, maskCard);
+      confidenceFill.style.width = data.mask_confidence != null
+        ? `${Math.min(100, data.mask_confidence)}%`
+        : "0%";
+
+      const tempText = data.temperature_c != null
+        ? `${data.temperature_c.toFixed(1)}°C`
         : "--";
-      tempMeta.textContent = data.temp_text || "Waiting for ESP32";
-      serialValue.textContent = data.serial_status || "--";
-      trackedCount.textContent = data.tracked_count ?? 0;
-      thresholdMeta.textContent = data.fever_threshold_c != null
+      setText(tempValue, tempText, tempCard);
+      setText(tempMeta, data.temp_text || "Waiting for sensor", tempCard);
+
+      tempTrend.className = "metric-trend " + (
+        data.is_high_temp ? "down" : data.temperature_c != null ? "up" : "neutral"
+      );
+      tempTrend.textContent = data.is_high_temp ? "▲ High temp" :
+        data.temperature_c != null ? "● Normal" : "No reading";
+
+      setText(serialValue, "Serial: " + (data.serial_status || "--").replace("Serial: ", ""));
+
+      const count = String(data.tracked_count ?? 0);
+      setText(trackedCount, count, countCard);
+      trackedBadge.textContent = `${count} tracked`;
+
+      setText(thresholdMeta, data.fever_threshold_c != null
         ? `Fever threshold: ${data.fever_threshold_c.toFixed(1)} °C`
-        : "Fever threshold: --";
-      renderPersons(data.persons || []);
+        : "Fever threshold: --", countCard);
+
+      filterSignal.textContent = signal.toUpperCase();
+      filterThreshold.textContent = data.fever_threshold_c != null
+        ? `${data.fever_threshold_c.toFixed(1)} °C` : "--";
+      filterSerial.textContent = (data.serial_status || "--").replace("Serial: ", "");
+      filterFps.textContent = data.fps != null ? data.fps.toFixed(1) : "--";
+
+      const persons = data.persons || [];
+      renderTimeline(persons);
+      renderPillChart(persons);
+      renderPersons(persons);
     }
 
+    const socket = io();
+
+    socket.on("connect", () => setConnection(true, "Live"));
+    socket.on("disconnect", () => setConnection(false, "Offline"));
     socket.on("telemetry_update", updateDashboard);
+
     socket.on("connect", async () => {
       try {
         const response = await fetch("/api/status");
         updateDashboard(await response.json());
       } catch (error) {
+        setConnection(false, "API error");
         statusText.textContent = "Could not reach dashboard API";
         signalDot.className = "signal-dot red";
+        signalCard.className = "metric-card signal-card signal-red";
+      }
+    });
+
+    async function submitSerialInput() {
+      const line = serialInput.value.trim();
+      if (!line) {
+        serialInputStatus.textContent = "Paste a line from Serial Monitor first";
+        return;
+      }
+      serialInputStatus.textContent = "Sending...";
+      try {
+        const response = await fetch("/api/serial-input", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ line }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          serialInputStatus.textContent = data.error || "Parse failed";
+          return;
+        }
+        serialInputStatus.textContent = `Applied ${data.object_temp_c?.toFixed(1) ?? "--"} °C`;
+        updateDashboard({
+          ...(await (await fetch("/api/status")).json()),
+        });
+      } catch (error) {
+        serialInputStatus.textContent = "Could not send reading";
+      }
+    }
+
+    serialSubmit.addEventListener("click", submitSerialInput);
+    serialInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        submitSerialInput();
       }
     });
   </script>

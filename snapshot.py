@@ -18,7 +18,9 @@ def save_violation_snapshot(frame, box, mask_status, temp_status, person_id=None
 	Returns the stored relative path (violations/<file>.jpg) or None when the
 	person is not a violation or the crop is empty.
 	"""
-	is_violation = (mask_status == "No Mask") or (temp_status == "Fever")
+	is_violation = (
+		mask_status in ("No Mask", "Unknown") or temp_status == "Fever"
+	)
 	if not is_violation:
 		return None
 
@@ -39,12 +41,25 @@ def save_violation_snapshot(frame, box, mask_status, temp_status, person_id=None
 		reason = "nomask_fever"
 	elif mask_status == "No Mask":
 		reason = "nomask"
+	elif mask_status == "Unknown":
+		reason = "uncertain"
 	else:
 		reason = "fever"
 
 	filename = f"{ts}_{reason}_p{person_id if person_id is not None else 'x'}.jpg"
 	filepath = os.path.join(VIOLATIONS_DIR, filename)
-	if not cv2.imwrite(filepath, cropped):
+	try:
+		if not cv2.imwrite(filepath, cropped):
+			# #region agent log
+			from debug_utils import debug_log
+			debug_log("snapshot.py:save_violation_snapshot", "cv2.imwrite failed",
+				{"filepath": filepath}, hypothesis_id="F")
+			# #endregion
+			return None
+	except cv2.error as exc:
+		from debug_utils import debug_log
+		debug_log("snapshot.py:save_violation_snapshot", "snapshot write error",
+			{"error": str(exc), "filepath": filepath}, hypothesis_id="F")
 		return None
 
 	return f"{VIOLATIONS_DIRNAME}/{filename}"
